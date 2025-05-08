@@ -18,6 +18,7 @@ Bu proje, Fruits 360 veri setini kullanarak meyve ve sebzeleri sınıflandıran 
 🍏🍌 130+ meyve/sebze sınıfı desteği
 
 🛠️ Teknoloji Yığını
+
 Python (3.8+)
 
 TensorFlow (2.12+)
@@ -35,3 +36,9 @@ Pillow (9.5+)
 Python 3.8 veya üzeri
 
 pip paket yöneticisi
+
+Fruits 360 Dataset indirme işlemi.
+
+train.py çalıştırılması
+
+app.py çalıştırılması.
