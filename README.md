@@ -2,20 +2,18 @@
 Yapay Zeka için-2025 Repository.
 
 📌 Proje Hakkında
-Bu proje, Fruits 360 veri setini kullanarak meyve ve sebzeleri sınıflandıran bir derin öğrenme uygulamasıdır. 130'dan fazla farklı meyve ve sebze türünü tanıyabilen bu uygulama, kullanıcı dostu bir arayüz sunar.
+Bu proje, Alzheimer Augmented MRI Dataset kullanarak Alzheimer's hastalığının 4 farklı evresini tespit etmeyi hedefleyen bir uygulamadır. Uygulama özellikleri, teknolojileri ve dosya yapısı belirtildiği gibi olmak zorundadır!
 
 ✨ Özellikler
 🖼️ Kullanıcı dostu görsel yükleme arayüzü
 
 🤖 EfficientNetB0 tabanlı derin öğrenme modeli
 
-📊 Top 5 tahmin görselleştirmesi
-
-📝 Kullanıcı geri bildirim sistemi
+📊 Hangi Sınıfa Yüzde Kaç Yaklaşıldı
 
 📈 Model performans metrikleri
 
-🍏🍌 130+ meyve/sebze sınıfı desteği
+4 Farklı Alzheimer Evre Tespit Sistemi
 
 🛠️ Teknoloji Yığını
 
@@ -37,8 +35,27 @@ Python 3.8 veya üzeri
 
 pip paket yöneticisi
 
-Fruits 360 Dataset indirme işlemi.
+Alzheimer (https://www.kaggle.com/datasets/uraninjo/augmented-alzheimer-mri-dataset) Dataset indirme işlemi.
 
-train.py çalıştırılması
+İndirilen dosyaların ayrı klasör içerisinde "data" klasörü oluşturularak atılması.
+
+train.py çalıştırılması.
 
 app.py çalıştırılması.
+
+Dosya yapısı şöyle olmalıdır :
+
+alzheimer_file
+  data
+    Training
+      Augmented Files
+    Test
+      Non Augmented
+  logs
+  models
+  utils
+    data_loader.py
+    model_utils.py
+  app.py
+  config.py
+  train.py
