@@ -1,179 +1,102 @@
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # TensorFlow loglarını azalt
+import warnings
+warnings.filterwarnings("ignore")  # İstenmeyen uyarıları gizle
+
 import streamlit as st
+
+# SET_PAGE_CONFIG MUTLAKA EN ÜSTTE VE İLK STREAMLIT KOMUTU OLMALI
+st.set_page_config(
+    page_title="Alzheimer MRI Sınıflandırıcı",
+    page_icon="🧠",
+    layout="wide"
+)
+
+# Diğer importlar SET_PAGE_CONFIG'tan sonra gelmeli
 from PIL import Image
 import numpy as np
 import tensorflow as tf
-from utils.data_loader import get_class_names
-from utils.feedback import save_feedback
 from config import Config
-import os
-from datetime import datetime
 import pandas as pd
-import matplotlib.pyplot as plt
 
-def main():
-    # Sayfa ayarları
-    st.set_page_config(
-        layout="wide", 
-        page_title="Fruits 360 Sınıflandırıcı",
-        page_icon="🍎"
-    )
+# Streamlit context uyarılarını önle
+try:
+    import streamlit.runtime.scriptrunner as scriptrunner
+    scriptrunner._thread_local = scriptrunner._ThreadLocal()
+except:
+    pass
 
-    # Model ve sınıf isimlerini yükle
-    @st.cache_resource
-    def load_model():
+# Yol kontrollerini yap
+Config.check_paths()
+
+# Modeli yükle
+@st.cache_resource
+def load_model():
+    try:
         model = tf.keras.models.load_model(Config.MODEL_PATH)
-        class_names = get_class_names()
+        class_names = ['MildDemented', 'ModerateDemented', 'NonDemented', 'VeryMildDemented']
         return model, class_names
+    except Exception as e:
+        st.error(f"Model yüklenirken hata oluştu: {str(e)}")
+        st.stop()
 
-    model, class_names = load_model()
+model, class_names = load_model()
 
-    # Uygulama arayüzü
-    st.title('🍎 Fruits 360 Sınıflandırıcı 🍌')
-    st.write(f"Bu uygulama, {len(class_names)} farklı meyve ve sebze türünü sınıflandırabilir.")
+# Streamlit arayüzü
+st.title('🧠 Alzheimer MRI Sınıflandırıcı')
+st.write("Bu uygulama, MRI görüntülerine göre Alzheimer evrelerini sınıflandırır.")
 
-    # Ana sütunlar
-    col1, col2 = st.columns([1, 2])
+# Görsel yükleme
+uploaded_file = st.file_uploader("Bir MRI görüntüsü yükleyin...", type=["jpg", "jpeg", "png"])
 
-    with col1:
-        # Görsel yükleme alanı
-        uploaded_file = st.file_uploader(
-            "Bir meyve/sebze görseli yükleyin...", 
-            type=["jpg", "jpeg", "png"]
-        )
-        
-        if uploaded_file is not None:
-            # Geçici dosyayı kaydet
-            temp_dir = "temp_uploads"
-            os.makedirs(temp_dir, exist_ok=True)
-            temp_path = os.path.join(temp_dir, uploaded_file.name)
-            
-            with open(temp_path, "wb") as f:
-                f.write(uploaded_file.getbuffer())
-            
-            # Görseli göster
-            img = Image.open(uploaded_file)
-            st.image(img, caption='Yüklenen Görüntü', use_column_width=True)
-            
-            # Tahmin butonu
-            if st.button('Sınıflandır', use_container_width=True):
-                with st.spinner('Model çalışıyor...'):
-                    # Görseli ön işleme
-                    img = img.resize(Config.IMG_SIZE)
-                    img_array = np.array(img) / 255.0
-                    img_array = np.expand_dims(img_array, axis=0)
-                    
-                    # Tahmin yap
-                    predictions = model.predict(img_array)[0]
-                    top5_idx = np.argsort(predictions)[-5:][::-1]
-                    top5_classes = [class_names[i] for i in top5_idx]
-                    top5_probs = predictions[top5_idx]
-                    
-                    # Sonuçları göster
-                    st.success(f"**En Yüksek Tahmin:** {top5_classes[0].capitalize()} (%{top5_probs[0]*100:.1f})")
-                    
-                    # Top 5 tahmin
-                    st.subheader("En Olası 5 Sınıf")
-                    prob_df = pd.DataFrame({
-                        'Sınıf': [cls.capitalize() for cls in top5_classes],
-                        'Olasılık': top5_probs
-                    })
-                    st.bar_chart(prob_df.set_index('Sınıf'))
-                    
-                    # Feedback mekanizması
-                    st.subheader("Tahmini Değerlendirin")
-                    
-                    # Doğru tahmin butonu
-                    if st.button("👍 Doğru Tahmin", key="correct"):
-                        save_feedback(
-                            image_path=temp_path,
-                            predicted_class=top5_classes[0],
-                            confidence=top5_probs[0]*100,
-                            user_feedback='correct'
-                        )
-                        st.success("Teşekkürler! Geri bildiriminiz kaydedildi.")
-                    
-                    # Yanlış tahmin formu
-                    with st.form("incorrect_feedback"):
-                        correct_class = st.selectbox(
-                            "Doğru sınıfı seçin",
-                            options=sorted([cls.capitalize() for cls in class_names])
-                        )
-                        
-                        submitted = st.form_submit_button("👎 Yanlış Tahmin")
-                        if submitted:
-                            save_feedback(
-                                image_path=temp_path,
-                                predicted_class=top5_classes[0],
-                                confidence=top5_probs[0]*100,
-                                user_feedback='incorrect',
-                                correct_class=correct_class.lower()
-                            )
-                            st.success("Teşekkürler! Geri bildiriminiz kaydedildi. Model iyileştirmelerinde kullanılacak.")
+if uploaded_file is not None:
+    # Görseli göster
+    img = Image.open(uploaded_file)
+    st.image(img, caption='Yüklenen Görüntü', use_column_width=True)
+    
+    # Tahmin yap
+    if st.button('Sınıflandır'):
+        with st.spinner('Analiz ediliyor...'):
+            try:
+                # Görseli ön işleme
+                img = img.resize(Config.IMG_SIZE)
+                img_array = np.array(img) / 255.0
+                
+                # RGB kontrolü
+                if len(img_array.shape) == 2:  # Grayscale ise
+                    img_array = np.stack((img_array,)*3, axis=-1)
+                elif img_array.shape[2] == 4:  # RGBA ise
+                    img_array = img_array[:,:,:3]
+                
+                img_array = np.expand_dims(img_array, axis=0)
+                
+                # Tahmin
+                predictions = model.predict(img_array)[0]
+                predicted_class = class_names[np.argmax(predictions)]
+                confidence = np.max(predictions) * 100
+                
+                # Sonuçları göster
+                st.success(f"**Tahmin:** {predicted_class} (%{confidence:.1f} güven)")
+                
+                # Tüm sınıflar için olasılıklar
+                st.subheader("Tüm Sınıf Olasılıkları")
+                prob_df = pd.DataFrame({
+                    'Sınıf': class_names,
+                    'Olasılık': predictions
+                }).sort_values('Olasılık', ascending=False)
+                st.bar_chart(prob_df.set_index('Sınıf'))
+                
+            except Exception as e:
+                st.error(f"Tahmin yapılırken hata oluştu: {str(e)}")
 
-    with col2:
-        # Model bilgileri
-        st.subheader("Model Performansı")
-        
-        # Confusion matrix
-        st.image('confusion_matrix.png', use_column_width=True)
-        
-        # Eğitim grafikleri
-        st.image('training_history.png', use_column_width=True)
-        
-        # Sınıf sayısı ve örnekler
-        st.subheader(f"Desteklenen {len(class_names)} Meyve/Sebze")
-        
-        # Kategorilere göre gruplandırma (örneğin tüm elma çeşitleri)
-        fruit_categories = {}
-        for name in class_names:
-            main_category = name.split(' ')[0]  # İlk kelimeyi ana kategori olarak al
-            if main_category not in fruit_categories:
-                fruit_categories[main_category] = []
-            fruit_categories[main_category].append(name)
-        
-        # Kategori seçimi
-        selected_category = st.selectbox(
-            "Kategori Seçin",
-            options=sorted(fruit_categories.keys())
-        )
-        
-        # Seçili kategorideki meyveleri göster
-        st.write(f"**{selected_category.capitalize()} Kategorisindeki Türler:**")
-        cols = st.columns(3)
-        for i, fruit in enumerate(sorted(fruit_categories[selected_category])):
-            cols[i%3].write(f"- {fruit.capitalize()}")
+# Yan bilgi çubuğu
+st.sidebar.header("Dataset Bilgisi")
+st.sidebar.info("""
+Bu uygulama [Augmented Alzheimer MRI Dataset](https://www.kaggle.com/datasets/uraninjo/augmented-alzheimer-mri-dataset) kullanılarak eğitilmiştir.
 
-    # Yan bilgi çubuğu
-    st.sidebar.header("Fruits 360 Dataset")
-    st.sidebar.info("""
-    Bu uygulama [Fruits 360 dataseti](https://www.kaggle.com/datasets/moltean/fruits) kullanılarak eğitilmiştir.
-
-    **Dataset Özellikleri:**
-    - 130+ meyve ve sebze türü
-    - 70,000+ yüksek kaliteli görüntü
-    - Her sınıfta en az 490 örnek
-    - 100x100 piksel çözünürlük
-    - Arka plan çıkarılmış görseller
-    """)
-
-    # Feedback verilerini göster (geliştirici modu)
-    if st.sidebar.checkbox("Geliştirici Modu"):
-        try:
-            feedback_df = pd.read_csv(Config.FEEDBACK_FILE)
-            st.sidebar.subheader("Toplanan Geri Bildirimler")
-            
-            # Feedback analizi
-            correct_rate = len(feedback_df[feedback_df['user_feedback'] == 'correct']) / len(feedback_df)
-            st.sidebar.metric("Doğru Tahmin Oranı", f"{correct_rate:.1%}")
-            
-            # En çok hata yapılan sınıflar
-            errors = feedback_df[feedback_df['user_feedback'] == 'incorrect']
-            if not errors.empty:
-                st.sidebar.subheader("En Çok Hata Yapılan Sınıflar")
-                error_counts = errors['correct_class'].value_counts().head(10)
-                st.sidebar.bar_chart(error_counts)
-        except FileNotFoundError:
-            st.sidebar.warning("Henüz geri bildirim toplanmadı")
-
-if __name__ == "__main__":
-    main()
+**Sınıflar:**
+- MildDemented
+- ModerateDemented
+- NonDemented
+- VeryMildDemented
+""")
