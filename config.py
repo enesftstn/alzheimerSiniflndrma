@@ -8,20 +8,18 @@ class Config:
     
     # Model ayarları
     IMG_SIZE = (224, 224)
-    BATCH_SIZE = 64
-    EPOCHS = 50
-    INITIAL_EPOCHS = 15  # Dondurulmuş katmanlar için
-    FINE_TUNE_EPOCHS = EPOCHS - INITIAL_EPOCHS
+    BATCH_SIZE = 32
+    EPOCHS = 30
+    NUM_CLASSES = 4  # 4 farklı sınıf
     
     # Model kayıt
     MODEL_DIR = "models"
-    MODEL_NAME = "effnetb0_fruits360"
+    MODEL_NAME = "alzheimer_model.h5"
     MODEL_PATH = os.path.join(MODEL_DIR, MODEL_NAME)
     
-    # Feedback
-    FEEDBACK_DIR = "feedback"
-    FEEDBACK_FILE = os.path.join(FEEDBACK_DIR, "feedback_data.csv")
-    
-    # Sınıf sayısı (otomatik belirlenecek)
-    NUM_CLASSES = None
-    CLASS_NAMES = None
+    @classmethod
+    def check_paths(cls):
+        """Gerekli klasörleri kontrol eder ve oluşturur"""
+        os.makedirs(cls.MODEL_DIR, exist_ok=True)
+        if not os.path.exists(cls.MODEL_PATH):
+            raise FileNotFoundError(f"Model dosyası bulunamadı: {cls.MODEL_PATH}")
